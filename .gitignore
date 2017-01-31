@@ -41,3 +41,4 @@ target/
 /bin/
 /beast/nbproject/
 beast/.settings/org.eclipse.jdt.core.prefs
+/c_tempfiles/

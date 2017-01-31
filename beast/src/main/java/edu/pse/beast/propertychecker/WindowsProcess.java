@@ -79,21 +79,7 @@ public class WindowsProcess extends CBMCProcess {
             ErrorLogger.log("Warning, process isn't alive anymore");
             return;
         } else {
-        	
-        	
-        	kill (process.toHandle());
-
-        	public void kill (ProcessHandle handle)
-        	{
-        	    handle.descendants().forEach((child) -> kill(child));
-        	    handle.destroy();
-        	}
-        	
-        	
-        	
-        	
-            process.destroyForcibly();
-            System.out.println("destroyed " + process.isAlive());
+        	kill(process.toHandle());
         }
 		
 		if (process.isAlive()) {
@@ -146,5 +132,11 @@ public class WindowsProcess extends CBMCProcess {
 	@Override
 	protected String sanitizeArguments(String toSanitize) {
 		return toSanitize;
+	}
+	
+	public void kill(ProcessHandle handle)
+	{
+	    handle.descendants().forEach((child) -> kill(child));
+	    handle.destroy();
 	}
 }
