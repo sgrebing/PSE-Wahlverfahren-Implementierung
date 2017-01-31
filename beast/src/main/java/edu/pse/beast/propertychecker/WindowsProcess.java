@@ -12,6 +12,7 @@ import java.util.Iterator;
 
 import javax.swing.JOptionPane;
 
+import edu.pse.beast.propertychecker.jna.Win32Process;
 import edu.pse.beast.toolbox.ErrorLogger;
 import edu.pse.beast.toolbox.FileLoader;
 
@@ -82,24 +83,14 @@ public class WindowsProcess extends CBMCProcess {
         	
         	
         	
-    
-        	OutputStreamWriter out = new OutputStreamWriter(process.getOutputStream());
+        	
+        	int pid = (some code to extract PID from the process you want to kill);
+        	Win32Process process = new Win32Process(pid);
+        	kill(process);
 
-
-        	 char ctrlBreak = (char)3;
-        	 //Different testing way to send the ctrlBreak;
-        	 try {
-				out.write(ctrlBreak);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-        	 try {
-				out.flush();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+        	
+        	
+        	//possible solution: http://stackoverflow.com/questions/10124299/how-do-i-terminate-a-process-tree-from-java
         	
         	
         	
@@ -161,4 +152,12 @@ public class WindowsProcess extends CBMCProcess {
 	protected String sanitizeArguments(String toSanitize) {
 		return toSanitize;
 	}
+	
+	public void kill(Win32Process target) throws IOException
+	{
+	   List<Win32Process> children = target.getChildren ();
+	   target.terminate ();
+	   for (Win32Process child : children) kill(child);
+	}
+	
 }
