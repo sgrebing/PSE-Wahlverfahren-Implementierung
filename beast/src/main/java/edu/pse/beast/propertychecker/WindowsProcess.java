@@ -81,32 +81,18 @@ public class WindowsProcess extends CBMCProcess {
         } else {
         	
         	
-        	
-    
-        	OutputStreamWriter out = new OutputStreamWriter(process.getOutputStream());
+        	kill (process.toHandle());
 
-
-        	 char ctrlBreak = (char)3;
-        	 //Different testing way to send the ctrlBreak;
-        	 try {
-				out.write(ctrlBreak);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-        	 try {
-				out.flush();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+        	public void kill (ProcessHandle handle)
+        	{
+        	    handle.descendants().forEach((child) -> kill(child));
+        	    handle.destroy();
+        	}
         	
         	
         	
         	
-        	
-        	
-         //   process.destroyForcibly();
+            process.destroyForcibly();
             System.out.println("destroyed " + process.isAlive());
         }
 		
