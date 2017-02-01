@@ -36,7 +36,7 @@ public class ThreadedBufferedReader implements Runnable {
 			line = reader.readLine();
 			while (line != null && !isInterrupted) {
 
-				System.out.println("lines: " + line);
+			//	System.out.println("lines: " + line);
 
 				readLines.add(line);
 				line = reader.readLine();

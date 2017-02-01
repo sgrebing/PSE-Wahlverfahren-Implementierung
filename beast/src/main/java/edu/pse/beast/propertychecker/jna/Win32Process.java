@@ -1,9 +1,12 @@
 package edu.pse.beast.propertychecker.jna;
 
+//credits for the code: http://stackoverflow.com/a/10124625
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.sun.jna.Native;
 import com.sun.jna.platform.win32.Kernel32;
 import com.sun.jna.platform.win32.Kernel32Util;
 import com.sun.jna.platform.win32.WinDef.DWORD;
@@ -45,7 +48,7 @@ public class Win32Process
     	
     	List<Win32Process> result = new ArrayList<Win32Process> ();
         WinNT.HANDLE hSnap = KernelExtra.CreateToolhelp32Snapshot (KernelExtra.TH32CS_SNAPPROCESS, new DWORD(0));
-        KernelExtra.PROCESSENTRY32.ByReference ent = new KernelExtra.PROCESSENTRY32.ByReference ();
+        KernelExtra.PROCESSENTRY32.ByReference ent = new KernelExtra.PROCESSENTRY32.ByReference();
         if (!KernelExtra.Process32First (hSnap, ent)) return result;
         do {
             if (ent.th32ParentProcessID.intValue () == pid) result.add (new Win32Process (ent.th32ProcessID.intValue ()));

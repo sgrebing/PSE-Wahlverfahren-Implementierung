@@ -72,7 +72,7 @@ public class testMain {
 		amountSeats.add(1);
 
 		ElectionCheckParameter ecp = new ElectionCheckParameter(amountVoters, amountCandidates, amountSeats,
-				new TimeOut(TimeUnit.SECONDS, 20), 4, "");
+				new TimeOut(TimeUnit.SECONDS, 10), 4, "");
 
 		implParameterSource parmSrc = new implParameterSource(ecp);
 

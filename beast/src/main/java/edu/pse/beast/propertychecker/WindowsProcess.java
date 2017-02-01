@@ -1,6 +1,7 @@
 package edu.pse.beast.propertychecker;
 
 import java.io.BufferedWriter;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -8,9 +9,23 @@ import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 import javax.swing.JOptionPane;
+
+import com.sun.jna.FromNativeContext;
+import com.sun.jna.Memory;
+import com.sun.jna.Native;
+import com.sun.jna.Pointer;
+import com.sun.jna.PointerType;
+import com.sun.jna.platform.win32.Kernel32;
+import com.sun.jna.platform.win32.WinNT;
+import com.sun.jna.win32.StdCallLibrary;
+import com.sun.jna.win32.W32APIFunctionMapper;
+import com.sun.jna.win32.W32APITypeMapper;
 
 import edu.pse.beast.propertychecker.jna.Win32Process;
 import edu.pse.beast.toolbox.ErrorLogger;
@@ -77,30 +92,37 @@ public class WindowsProcess extends CBMCProcess {
 	@Override
 	protected void stopProcess() {
 		if (!process.isAlive()) {
-            ErrorLogger.log("Warning, process isn't alive anymore");
-            return;
-        } else {
-        	
-        	
-        	
-        	
-        	int pid = (some code to extract PID from the process you want to kill);
-        	Win32Process process = new Win32Process(pid);
-        	kill(process);
+			ErrorLogger.log("Warning, process isn't alive anymore");
+			return;
+		} else {
 
-        	
-        	
-        	//possible solution: http://stackoverflow.com/questions/10124299/how-do-i-terminate-a-process-tree-from-java
-        	
-        	
-        	
-        	
-        	
-        	
-         //   process.destroyForcibly();
-            System.out.println("destroyed " + process.isAlive());
-        }
-		
+			
+			
+			int pid = getWindowsProcessId(process);
+
+			
+			
+			if (pid >= 0) {
+			//	int pid = handle;
+				Win32Process toKill;
+				try {
+					toKill = new Win32Process(pid);
+					kill(toKill);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			} else {
+				ErrorLogger.log("Error getting the Process Handle for windows");
+			}
+
+			// possible solution:
+			// http://stackoverflow.com/questions/10124299/how-do-i-terminate-a-process-tree-from-java
+
+			// process.destroyForcibly();
+			System.out.println("destroyed " + process.isAlive());
+		}
+
 		if (process.isAlive()) {
 			ErrorLogger.log("Warning, the program was unable to shut down the CBMC Process \n"
 					+ "Please kill it manually, especially if it starts taking up a lot of ram");
@@ -152,12 +174,147 @@ public class WindowsProcess extends CBMCProcess {
 	protected String sanitizeArguments(String toSanitize) {
 		return toSanitize;
 	}
-	
-	public void kill(Win32Process target) throws IOException
-	{
-	   List<Win32Process> children = target.getChildren ();
-	   target.terminate ();
-	   for (Win32Process child : children) kill(child);
+
+	public void kill(Win32Process target) throws IOException {
+		List<Win32Process> children = target.getChildren();
+		target.terminate();
+		for (Win32Process child : children)
+			kill(child);
+	}
+
+	private int getWindowsProcessId(Process proc) {
+		
+		System.out.println("neue methode");
+		
+		if (proc.getClass().getName().equals("java.lang.Win32Process")
+				|| proc.getClass().getName().equals("java.lang.ProcessImpl")) {
+			
+			
+			System.out.println("ist windows");
+			
+			/* determine the pid on windows plattforms */
+			try {
+				Field f = proc.getClass().getDeclaredField("handle");
+				f.setAccessible(true);
+				long handl = f.getLong(proc);
+				Kernel32 kernel = Kernel32.INSTANCE;
+				// be careful! If you use 3.3.0 version of JNA, you wil not
+				// found W32API.HANDLE. In stead, you should use WinNT.HANDLE
+				WinNT.HANDLE handle = new WinNT.HANDLE();
+				// be careful for the security issue.
+
+				Field toSet = handle.getClass().getDeclaredField("immutable");
+
+				toSet.setAccessible(true);
+
+				boolean savedState = toSet.getBoolean(handle);
+
+				System.out.println("saved: " + savedState);
+				
+//				toSet.setBoolean(toSet, false);
+
+				
+				handle.setPointer(Pointer.createConstant(handl));
+				
+				
+				int pid = kernel.GetProcessId(handle);
+
+//				toSet.set(toSet, savedState);
+//				toSet.setAccessible(false);
+
+				System.out.println("neue methode zur bestimmung: " + pid);
+				
+				return pid;
+			} catch (Throwable e) {
+				e.printStackTrace();
+			}
+		}
+		return -1;
 	}
 	
+	
+	/* Copyright (c) 2007 Timothy Wall, All Rights Reserved
+	*
+	* This library is free software; you can redistribute it and/or
+	* modify it under the terms of the GNU Lesser General Public
+	* License as published by the Free Software Foundation; either
+	* version 2.1 of the License, or (at your option) any later version.
+	* 
+	* This library is distributed in the hope that it will be useful,
+	* but WITHOUT ANY WARRANTY; without even the implied warranty of
+	* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	* Lesser General Public License for more details.  
+	*/
+	public interface W32Errors {
+		   int NO_ERROR               = 0;
+	   int ERROR_INVALID_FUNCTION = 1;
+	   int ERROR_FILE_NOT_FOUND   = 2;
+	   int ERROR_PATH_NOT_FOUND   = 3;
+	}
+
+
+//	public interface Kernel32 extends W32API {
+//		Kernel32 INSTANCE = (Kernel32) Native.loadLibrary("kernel32",
+//				Kernel32.class, DEFAULT_OPTIONS);
+//		/* http://msdn.microsoft.com/en-us/library/ms683179(VS.85).aspx */
+//		HANDLE GetCurrentProcess();
+//		/* http://msdn.microsoft.com/en-us/library/ms683215.aspx */
+//		int GetProcessId(WinNT.HANDLE Process);
+//			int GetCurrentProcessId();
+//	}
+
+	/** Base type for most W32 API libraries.  Provides standard options
+	 * for unicode/ASCII mappings.  Set the system property w32.ascii
+	 * to true to default to the ASCII mappings.
+	 */
+	public interface W32API extends StdCallLibrary, W32Errors {
+	  
+	    /** Standard options to use the unicode version of a w32 API. */
+	    Map UNICODE_OPTIONS = new HashMap() {
+	        /**
+			 *
+			 */
+			private static final long serialVersionUID = 1L;
+			{
+	            put(OPTION_TYPE_MAPPER, W32APITypeMapper.UNICODE);
+	            put(OPTION_FUNCTION_MAPPER, W32APIFunctionMapper.UNICODE);
+	        }
+	    };
+	  
+	    /** Standard options to use the ASCII/MBCS version of a w32 API. */
+	    Map ASCII_OPTIONS = new HashMap() {
+	        /**
+			 *
+			 */
+			private static final long serialVersionUID = 1L;
+			{
+	            put(OPTION_TYPE_MAPPER, W32APITypeMapper.ASCII);
+	            put(OPTION_FUNCTION_MAPPER, W32APIFunctionMapper.ASCII);
+	        }
+	    };
+	    Map DEFAULT_OPTIONS = Boolean.getBoolean("w32.ascii") ? ASCII_OPTIONS : UNICODE_OPTIONS;
+	  
+	    public class HANDLE extends PointerType {
+	        public Object fromNative(Object nativeValue, FromNativeContext context) {
+	            Object o = super.fromNative(nativeValue, context);
+	            if (INVALID_HANDLE_VALUE.equals(o))
+	                return INVALID_HANDLE_VALUE;
+	            return o;
+	        }
+	    }
+	    /** Constant value representing an invalid HANDLE. */
+	    HANDLE INVALID_HANDLE_VALUE = new HANDLE() {
+	        { super.setPointer(Pointer.createConstant(-1)); }
+	        public void setPointer(Pointer p) {
+	            throw new UnsupportedOperationException("Immutable reference");
+	        }
+	    };
+	}
+
+
+
+
+
+
+
 }

@@ -1,5 +1,10 @@
 package  edu.pse.beast.propertychecker.jna;
 
+//credits for the code: http://stackoverflow.com/a/10124625
+
+import java.util.Arrays;
+import java.util.List;
+
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 import com.sun.jna.platform.win32.BaseTSD;
@@ -55,12 +60,15 @@ public interface KernelExtra extends StdCallLibrary {
     public static class PROCESSENTRY32 extends Structure {
 
         public static class ByReference extends PROCESSENTRY32 implements Structure.ByReference {
-            public ByReference() {
-            }
+
 
             public ByReference(Pointer memory) {
                 super(memory);
             }
+
+			public ByReference() {
+				
+			}
         }
 
         public PROCESSENTRY32() {
@@ -125,6 +133,11 @@ public interface KernelExtra extends StdCallLibrary {
          * retrieve the full path of the executable file for a 64-bit process.
          */
         public char[] szExeFile = new char[WinDef.MAX_PATH];
+
+		@Override
+		protected List<String> getFieldOrder() {
+			return Arrays.asList(new String[] {"cntThreads", "cntUsage", "dwFlags", "dwSize", "pcPriClassBase", "szExeFile", "th32DefaultHeapID", "th32ModuleID", "th32ParentProcessID", "th32ProcessID"});
+		}
     }
 
 
@@ -186,7 +199,6 @@ public interface KernelExtra extends StdCallLibrary {
      *   does not contain process information.
      */
     public static boolean Process32Next(WinNT.HANDLE hSnapshot, KernelExtra.PROCESSENTRY32.ByReference lppe) {
-		// TODO Auto-generated method stub
 		return false;
 	}
 
