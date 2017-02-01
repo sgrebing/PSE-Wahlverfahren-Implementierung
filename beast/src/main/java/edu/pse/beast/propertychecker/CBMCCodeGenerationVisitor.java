@@ -20,8 +20,10 @@ import edu.pse.beast.datatypes.booleanExpAST.NotNode;
 import edu.pse.beast.datatypes.booleanExpAST.NumberExpression;
 import edu.pse.beast.datatypes.booleanExpAST.SymbolicVarExp;
 import edu.pse.beast.datatypes.booleanExpAST.ThereExistsNode;
+import edu.pse.beast.datatypes.booleanExpAST.TypeExpression;
 import edu.pse.beast.datatypes.booleanExpAST.VoteExp;
 import edu.pse.beast.datatypes.booleanExpAST.VoteSumForCandExp;
+import edu.pse.beast.toolbox.CodeArrayListBeautifier;
 import java.util.ArrayList;
 import java.util.Stack;
 
@@ -32,7 +34,6 @@ import java.util.Stack;
 public class CBMCCodeGenerationVisitor implements BooleanExpNodeVisitor {
 
     private String assumeOrAssert;
-    private ArrayList<String> code;
     private int andNodeCounter;
     private int orNodeCounter;
     private int implicationNodeCounter;
@@ -46,9 +47,11 @@ public class CBMCCodeGenerationVisitor implements BooleanExpNodeVisitor {
     private int electExpCounter;
     private int voteExpCounter;
     private int voteSumExpressionCounter;
+    private int loopVariable;
     private Stack<String> variableNames;
+    private CodeArrayListBeautifier code;
 
-    public CBMCCodeGenerationVisitor(){
+    public CBMCCodeGenerationVisitor() {
         andNodeCounter = 0;
         orNodeCounter = 0;
         implicationNodeCounter = 0;
@@ -62,99 +65,143 @@ public class CBMCCodeGenerationVisitor implements BooleanExpNodeVisitor {
         electExpCounter = 0;
         voteExpCounter = 0;
         voteSumExpressionCounter = 0;
+        loopVariable = 0;
+        code = new CodeArrayListBeautifier();
     }
-    public void setToPrePropertyMode(){
+
+    public void setToPrePropertyMode() {
         assumeOrAssert = "assume";
     }
-    public void setToPostPropertyMode(){
-         assumeOrAssert = "assert";
+
+    public void setToPostPropertyMode() {
+        assumeOrAssert = "assert";
+
     }
-    
-    public ArrayList<String> generate(ArrayList<BooleanExpressionNode> nodes) {
-        code = new ArrayList<>();
+
+    public ArrayList<String> generateCode(BooleanExpressionNode node) {
+        code = new CodeArrayListBeautifier();
         variableNames = new Stack<>();
-        
-        for(BooleanExpressionNode n : nodes) {
-            variableNames.clear();
-            n.getVisited(this);
-        }
-        
-        return code;
-    }
-    
-    @Override
-    public void visitBooleanListNode(BooleanExpListNode node) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+
+        node.getVisited(this);
+
+        return code.getCodeArrayList();
     }
 
     @Override
     public void visitAndNode(LogicalAndNode node) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+
+        String varName = "and_" + andNodeCounter;
+        andNodeCounter++;
+        variableNames.push(varName);
+        node.getLHSBooleanExpNode().getVisited(this);
+        node.getRHSBooleanExpNode().getVisited(this);
+        code.add("unsigned int " + varName + " = ((" + variableNames.pop() + ") && (" + variableNames.pop() + "));");
+        testIfLast();
+
     }
 
     @Override
     public void visitOrNode(LogicalOrNode node) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        String varName = "or_" + orNodeCounter;
+        orNodeCounter++;
+        variableNames.push(varName);
+        node.getLHSBooleanExpNode().getVisited(this);
+        node.getRHSBooleanExpNode().getVisited(this);
+        code.add("unsigned int " + varName + " = ((" + variableNames.pop() + ") || (" + variableNames.pop() + "));");
+        testIfLast();
     }
 
     @Override
     public void visitImplicationNode(ImplicationNode node) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        String varName = "implication_" + implicationNodeCounter;
+        implicationNodeCounter++;
+        variableNames.push(varName);
+        node.getLHSBooleanExpNode().getVisited(this);
+        node.getRHSBooleanExpNode().getVisited(this);
+        code.add("unsigned int " + varName + " = (!(" + variableNames.pop() + ") || (" + variableNames.pop() + "));");
+        testIfLast();
     }
 
     @Override
     public void visitAquivalencyNode(EquivalencyNode node) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        String varName = "aquivalency_" + aquivalencyNodeCounter;
+        aquivalencyNodeCounter++;
+        variableNames.push(varName);
+        node.getLHSBooleanExpNode().getVisited(this);
+        node.getRHSBooleanExpNode().getVisited(this);
+        String lhs = variableNames.pop();
+        String rhs = variableNames.pop();
+        code.add("unsigned int " + varName + " = (((" + lhs + ") && (" + rhs + ")) || (!(" + lhs + ") && (!" + rhs + ")));");
+        testIfLast();
     }
 
     @Override
     public void visitForAllNode(ForAllNode node) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        //throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
     public void visitThereExistsNode(ThereExistsNode node) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        //throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
     public void visitNotNode(NotNode node) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        String varName = "not_" + notNodeCounter;
+        notNodeCounter++;
+        variableNames.push(varName);
+        node.getNegatedExpNode().getVisited(this);
+        code.add("unsigned int " + varName + " = !(" + variableNames.pop() + ");");
+        testIfLast();
     }
 
     @Override
     public void visitComparisonNode(ComparisonNode node) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        // error here
+        String varName = "comparison_" + comparisonNodeCounter;
+        comparisonNodeCounter++;
+        variableNames.push(varName);
+        node.getLHSBooleanExpNode().getVisited(this);
+        node.getRHSBooleanExpNode().getVisited(this);
+        code.add("unsigned int " + varName + " = ((" + variableNames.pop() + ") "
+                + node.getComparisonSymbol() + " (" + variableNames.pop() + "));");
+        testIfLast();
     }
 
     @Override
     public void visitSymbVarExp(SymbolicVarExp exp) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        //throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
     public void visitConstExp(ConstantExp exp) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        variableNames.push(exp.getConstant());
     }
 
     @Override
     public void visitElectExp(ElectExp exp) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        //throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
     public void visitVoteExp(VoteExp exp) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        //throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
     public void visitVoteSumExp(VoteSumForCandExp exp) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        //throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
     public void visitNumberExpNode(NumberExpression exp) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        //throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
+    private void testIfLast() {
+        if (variableNames.size() == 1) {
+            code.add(assumeOrAssert + "(" + variableNames.pop() + ")");
+            variableNames.pop();
+        }
+    }
 }

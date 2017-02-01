@@ -1,6 +1,7 @@
 package edu.pse.beast.propertylist.View;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.MenuBar;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -14,6 +15,7 @@ import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JToolBar;
 
 import edu.pse.beast.celectiondescriptioneditor.GUI.CCodeEditorGUI;
@@ -33,7 +35,7 @@ import edu.pse.beast.toolbox.ObjectRefsForBuilder;
 *
 * @author Justin
 */
-public class PropertyListWindow extends JFrame implements DisplaysStringsToUser, Observer, ActionListener {
+public class PropertyListWindow extends JFrame implements DisplaysStringsToUser, Observer {
 	
 	PLModelInterface model;
 	PLControllerInterface controller;
@@ -63,7 +65,7 @@ public class PropertyListWindow extends JFrame implements DisplaysStringsToUser,
 		
 		// setFrame(new JFrame());
 		this.setLayout(new BorderLayout());
-		setBounds(600, 100, 500, 300);
+		setBounds(600, 100, 500, 500);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setTitle("Property List");
 		
@@ -84,11 +86,13 @@ public class PropertyListWindow extends JFrame implements DisplaysStringsToUser,
 		panel = new JPanel();
 		getContentPane().add(panel, BorderLayout.CENTER);
 		
-	if (!items.isEmpty()) {
-		for (ListItem item : items) {
-			panel.add(item, BorderLayout.CENTER);
+		if (!items.isEmpty()) {
+			for (ListItem item : items) {
+				panel.add(item, BorderLayout.CENTER);
+			}
 		}
-	}
+		/*JScrollPane jsp = new JScrollPane(panel, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+		this.add(jsp);*/
 		
 		endpanel = new JPanel();
 		getContentPane().add(endpanel, BorderLayout.SOUTH);
@@ -102,6 +106,8 @@ public class PropertyListWindow extends JFrame implements DisplaysStringsToUser,
 
 		});
 		endpanel.add(addNewButton, BorderLayout.LINE_END);
+		
+		
 	}
 	
 	
@@ -116,18 +122,36 @@ public class PropertyListWindow extends JFrame implements DisplaysStringsToUser,
 	}
 
 	
+	// shaky
 	public void addItem(PropertyItem prop) {
 		ListItem addedItem = new ListItem(controller, model, prop);
 		panel.add(addedItem, BorderLayout.WEST);
 		panel.revalidate();
+		items.add(addedItem);
+	}
+	public void delItem(int index) {
+		ListItem delItem = items.get(index);
+		panel.remove(delItem);
+		panel.revalidate();
+		items.remove(delItem);
 	}
 	
-	private void updateItems() {
-		panel.repaint();
-		for (ListItem item : items) {
-			panel.add(item, BorderLayout.CENTER);
+	
+	private void updateItems(ArrayList<PropertyItem> propertyList) {
+		items = new ArrayList<ListItem>();
+		panel.removeAll();
+		panel.revalidate();
+		this.validate();
+		
+		for (PropertyItem propertyItem : propertyList) {
+			ListItem current = new ListItem(controller, model, propertyItem);
+			items.add(current);
+			panel.add(current, BorderLayout.CENTER);
 		}
+		panel.revalidate();
+		panel.repaint();
 	}
+	
 	
 	private void addNewPropertyAction(ActionEvent e) {
 		newPropWindow.toggleVisibility();
@@ -148,10 +172,13 @@ public class PropertyListWindow extends JFrame implements DisplaysStringsToUser,
 
 	@Override
 	public void update(Observable o, Object obj) {
-		ArrayList<PropertyItem> list = model.getList();
+		updateItems(model.getList());
 		
 		// check if new property was added to model
-		if (list.size() > items.size()) addItem(list.get(model.getDirtyIndex()));
+		//if (list.size() > items.size()) addItem(list.get(model.getDirtyIndex()));
+		
+		// check if property was deleted from model
+		//if (list.size() < items.size()) delItem(model.getUpdateIndex());
 		
 		/*ArrayList<PropertyItem> list = ((PLModel)o).getDescr();
 		items = new ArrayList<ListItem>();
@@ -160,13 +187,20 @@ public class PropertyListWindow extends JFrame implements DisplaysStringsToUser,
 		}
 		updateItems();*/
 	}
-
-	//MVC
-	@Override
-	public void actionPerformed(ActionEvent e) {
-		// TODO Auto-generated method stub
-		
+	
+	public void rejectNameChange(PropertyItem prop) {
+		for (ListItem li : items) {
+			if (prop.equals(li.getPropertyItem())) {
+				li.getNameField().setBackground(Color.RED);
+				
+				li.getNameField().setForeground(Color.RED);
+				
+				//li.getNameField().setBackground(Color.WHITE);
+			}
+		}
 	}
+	
+
 	
 	
 	
