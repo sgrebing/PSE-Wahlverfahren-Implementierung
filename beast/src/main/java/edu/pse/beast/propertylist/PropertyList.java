@@ -15,6 +15,7 @@ import edu.pse.beast.highlevel.PostAndPrePropertiesDescriptionSource;
 import edu.pse.beast.highlevel.ResultInterface;
 import edu.pse.beast.highlevel.ResultPresenter;
 import edu.pse.beast.propertychecker.Result;
+import edu.pse.beast.propertylist.Model.PLModel;
 import edu.pse.beast.propertylist.Model.PLModelInterface;
 import edu.pse.beast.propertylist.View.PropertyListWindow;
 
@@ -40,6 +41,10 @@ public class PropertyList implements PLControllerInterface, PostAndPreProperties
 		editor.showWindow();
 		view = new PropertyListWindow(this, model);
 		model.initialize();
+	}
+	
+	public PLModel getModel() {
+		return (PLModel)model;
 	}
 	
 	@Override
@@ -78,12 +83,13 @@ public class PropertyList implements PLControllerInterface, PostAndPreProperties
 
 	
 
-    /* (non-Javadoc)
+    /* 
      * @see edu.pse.beast.highlevel.PostAndPrePropertiesDescriptionSource#isCorrect()
      */
     @Override
     public boolean isCorrect() { throw new UnsupportedOperationException("Not supported yet."); 
-    //To change body of generated methods, choose Tools | Templates.
+    // TODO
+
     	/* for (PropertyItem item : model.getList()) {
     		*/
     	
@@ -91,44 +97,42 @@ public class PropertyList implements PLControllerInterface, PostAndPreProperties
 
 	@Override
 	public void stopReacting() {
-		
+		view.stopReacting();
 	}
 
 	@Override
 	public void resumeReacting() {
-
+		view.resumeReacting();
 	}
 
-	/* (non-Javadoc)
+	/* 
      * @see edu.pse.beast.highlevel.PostAndPrePropertiesDescriptionSource#getPostAndPrePropertiesDescriptions()
      */
 	public ArrayList<PostAndPrePropertiesDescription> getPostAndPrePropertiesDescriptions() {
-		return null;
-		/*ArrayList<PostAndPrePropertiesDescription> res = new ArrayList<PostAndPrePropertiesDescription>();
-		for (PropertyItem item : propertyDescriptions) res.add(item.getDescription());
-		return res;
 		ArrayList<PostAndPrePropertiesDescription> result = new ArrayList<PostAndPrePropertiesDescription>();
-		for (PropertyItem item : propDescs) {
-			result.add(item.getDescription());
+		ArrayList<PropertyItem> from = model.getList();
+		
+		for (PropertyItem prop : from) {
+			if (prop.willBeTested()) result.add(prop.getDescription());
 		}
-		return result;*/
+		return result;
 	}
-	
 
-
+	/* (non-Javadoc)
+	 * @see edu.pse.beast.highlevel.ResultPresenter#presentResult(edu.pse.beast.highlevel.ResultInterface)
+	 */
 	@Override
 	public void presentResult(ResultInterface res) {
 		// TODO Auto-generated method stub
 		
+		// if (res.readyToPresent()) res.presentTo(presenter);
+		
+		// ich brauch noch das postandpreproperties dazu
+		
 	}
 	
-	// Interface methods
-    /* (non-Javadoc)
-     * @see edu.pse.beast.highlevel.ResultPresenter#presentResult(edu.pse.beast.propertychecker.Result)
-     */
-    public void presentResult(Result res) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
+
+
 
 	
 	

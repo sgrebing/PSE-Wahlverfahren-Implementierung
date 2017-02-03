@@ -13,9 +13,7 @@ import edu.pse.beast.datatypes.propertydescription.SymbolicVariable;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import edu.pse.beast.datatypes.internal.InternalTypeContainer;
-import edu.pse.beast.datatypes.internal.InternalTypeRep;
-import edu.pse.beast.datatypes.internal.VotingMethodInput;
-import edu.pse.beast.datatypes.internal.VotingMethodOutput;
+import edu.pse.beast.toolbox.CCodeHelper;
 import edu.pse.beast.toolbox.CodeArrayListBeautifier;
 import edu.pse.beast.toolbox.ErrorLogger;
 import edu.pse.beast.toolbox.antlr.booleanexp.FormalPropertyDescriptionLexer;
@@ -33,92 +31,53 @@ import org.antlr.v4.runtime.CommonTokenStream;
  * @author Niels
  */
 public class CBMCCodeGenerator {
-    
+
     private final CodeArrayListBeautifier code;
     private final ElectionDescription electionDescription;
     private final PostAndPrePropertiesDescription postAndPrePropertiesDescription;
     private final FormalPropertySyntaxTreeToAstTranslator translator;
     private final CBMCCodeGenerationVisitor visitor;
-    private VotingMethodInput inputType;
-    private VotingMethodOutput outputType;
+    private final ElectionTypeContainer inputType;
+    private final ElectionTypeContainer outputType;
+    private final CCodeHelper cCodeHelper;
     private int numberOfTimesVoted; // this number should be the number of rounds of votes the Propertys compare.
-    private int loopVariableCounter;
-    
+
     public CBMCCodeGenerator(ElectionDescription electionDescription, PostAndPrePropertiesDescription postAndPrePropertiesDescription) {
-        
-        
+
         this.translator = new FormalPropertySyntaxTreeToAstTranslator();
         this.electionDescription = electionDescription;
         this.postAndPrePropertiesDescription = postAndPrePropertiesDescription;
         code = new CodeArrayListBeautifier();
-        
-        ElectionTypeContainer inputTypeContainer = electionDescription.getInputType();
-        ElectionTypeContainer outputTypeContainer = electionDescription.getOutputType(); 
-        
-        /**
-         * this code is only here, because VotingInputType and VotingOutputType aren't used by the CElection Description yet.
-         */
-        
-        
-        
-        switch(inputTypeContainer.getType().getInternalType()) {
-            case VOTER:
-                break;
-            case CANDIDATE:
-                break;
-            case SEAT:
-                break;
-            case APPROVAL:
-                break;
-            case WEIGHTEDAPPROVAL:
-                break;
-            case INTEGER:
-                break;
-            default:
-                throw new AssertionError(inputTypeContainer.getType().getInternalType().name());
-      
-        }
-        switch(outputTypeContainer.getType().getInternalType()) {
-            case VOTER:
-                break;
-            case CANDIDATE:
-                break;
-            case SEAT:
-                break;
-            case APPROVAL:
-                break;
-            case WEIGHTEDAPPROVAL:
-                break;
-            case INTEGER:
-                break;
-            default:
-                throw new AssertionError(outputTypeContainer.getType().getInternalType().name());
-        }
-        
-        
-        this.visitor = new CBMCCodeGenerationVisitor(inputType, outputType);
+
+        inputType = electionDescription.getInputType();
+        outputType = electionDescription.getOutputType();
+
+        this.visitor = new CBMCCodeGenerationVisitor();
         /*
         the variable loopVariableCounter is supposed to provide an index so that it is possible to have loops within loops in the generated code
          */
-        this.loopVariableCounter = 0;
+
+        cCodeHelper = new CCodeHelper();
+
         generateCode();
+
     }
-    
+
     public ArrayList<String> getCode() {
         return code.getCodeArrayList();
     }
-    
+
     private void generateCode() {
         addHeader();
-        
+
         addMainMethod();
-        
+
         code.add("//Code of the user");
         ArrayList<String> electionDescriptionCode = (ArrayList<String>) electionDescription.getCode();
         electionDescriptionCode.forEach((item) -> {
             code.add(item);
         });
-        
+
     }
 
     // maybe add something that let's the user use imports
@@ -140,7 +99,7 @@ public class CBMCCodeGenerator {
      * the main method the votingmethod is called
      */
     private void addMainMethod() {
-        
+
         code.add("int main(int argc, char *argv[]) {");
         code.addTab();
 
@@ -152,9 +111,9 @@ public class CBMCCodeGenerator {
                 = generateAST(postAndPrePropertiesDescription.getPrePropertiesDescription().getCode());
         BooleanExpListNode postAST
                 = generateAST(postAndPrePropertiesDescription.getPostPropertiesDescription().getCode());
-        
+
         initializeNumberOfTimesVoted(preAST, postAST);
-        
+
         addVotesArrayAndElectInitialisation();
 
         // the the PreProperties must be definied
@@ -162,7 +121,7 @@ public class CBMCCodeGenerator {
 
         // now the Post Properties can be checked
         addPostProperties(postAST);
-        
+
         code.deleteTab();
         code.add("}");
     }
@@ -177,10 +136,10 @@ public class CBMCCodeGenerator {
         symbolicVariableList.forEach((symbVar) -> {
             InternalTypeContainer internalType = symbVar.getInternalTypeContainer();
             String id = symbVar.getId();
-            
+
             if (!internalType.isList()) {
                 switch (internalType.getInternalType()) {
-                    
+
                     case VOTER:
                         code.add("unsigned int " + id + " = nondet_uint();");
                         // a Voter is basically an unsigned int.
@@ -191,7 +150,7 @@ public class CBMCCodeGenerator {
                     case CANDIDATE:
                         code.add("unsigned int " + id + " = nondet_uint();");
                         // a Candidate is basically an unsigned int. Candidate 1 is 1 and so on
-                        code.add("assume(0 < " + id + " && " + id + " <= C);");
+                        code.add("assume(0 <= " + id + " && " + id + " < C);");
                         // C is the number of total Candidates. 0 is NOT a Candidate
                         break;
                     case SEAT:
@@ -210,47 +169,54 @@ public class CBMCCodeGenerator {
                         break;
                     default:
                         reportUnsupportedType(id);
-                    
+
                 }
             } else {
                 reportUnsupportedType(id);
             }
         });
         code.add("");
-        
+
     }
 
     /**
      * this adds the Code of the PreProperties. It uses a Visitor it creates
      */
     private void addPreProperties(BooleanExpListNode preAST) {
-        
+
+        code.add("");
+        code.add("//preproperties ");
+        code.add("");
         visitor.setToPrePropertyMode();
         preAST.getBooleanExpressions().forEach((booleanExpressionLists) -> {
             booleanExpressionLists.forEach((booleanNode) -> {
                 code.addArrayList(visitor.generateCode(booleanNode));
             });
         });
-        
+
     }
 
     /**
      * this adds the Code of the PostProperties. It uses a Visitor it creates
      */
     private void addPostProperties(BooleanExpListNode postAST) {
+
+        code.add("");
+        code.add("//postproperties ");
+        code.add("");
         visitor.setToPostPropertyMode();
         postAST.getBooleanExpressions().forEach((booleanExpressionLists) -> {
             booleanExpressionLists.forEach((booleanNode) -> {
                 code.addArrayList(visitor.generateCode(booleanNode));
             });
         });
-        
+
     }
-    
+
     private void reportUnsupportedType(String id) {
         ErrorLogger.log("Der Typ der symbolischen Variable " + id + " wird nicht unterstützt");
     }
-    
+
     private void initializeNumberOfTimesVoted(BooleanExpListNode preAST, BooleanExpListNode postAST) {
         numberOfTimesVoted = (preAST.getMaxVoteLevel() > postAST.getMaxVoteLevel())
                 ? preAST.getMaxVoteLevel() : postAST.getMaxVoteLevel();
@@ -259,132 +225,74 @@ public class CBMCCodeGenerator {
         numberOfTimesVoted = (postAST.getHighestElect() > numberOfTimesVoted)
                 ? postAST.getHighestElect() : numberOfTimesVoted;
     }
-    
+
     private void addVotesArrayAndElectInitialisation() {
-        
+
         code.add("//voting-array and elect variable initialisation");
-        
-        ElectionTypeContainer inputElectionType = electionDescription.getInputType();
-        InternalTypeContainer inputInternalType = inputElectionType.getType();
-        
-        ElectionTypeContainer outputElectionType = electionDescription.getOutputType();
-        InternalTypeContainer outputInternalType = outputElectionType.getType();
-        
-        if (outputInternalType.getInternalType() == InternalTypeRep.CANDIDATE
-                || outputInternalType.isList()
-                && outputInternalType.getListedType().getInternalType() == InternalTypeRep.CANDIDATE) {
-            
-            switch (inputInternalType.getInternalType()) {
-                case VOTER:
-                    ErrorLogger.log("The input Type should not be VOTER");
-                    break;
-                case CANDIDATE:
-                    for (int i = 1; i <= numberOfTimesVoted; i++) {
-                        code.add("unsigned int votes" + i + "[V];");
-                        code.add("unsigned int i" + loopVariableCounter + ";");
-                        code.add("for(i" + loopVariableCounter + " = 0; i" + loopVariableCounter
-                                + " < V; i" + loopVariableCounter + "++) {");
-                        code.addTab();
-                        code.add("votes" + i + "[i" + loopVariableCounter + "] = nondet_uint();");
-                        code.deleteTab();
-                        code.add("}");
-                        loopVariableCounter++;
-                        if (outputInternalType.isList()) {
-                            code.add("unsigned int elect" + i + "[C+1] = voting(votes" + i + ");");
-                        } else {
-                            code.add("unsigned int elect" + i + " = voting(votes" + i + ");");
-                        }
-                    }
-                    
-                    break;
-                case SEAT:
-                    ErrorLogger.log("The input Type should not be SEAT");
-                    break;
-                case APPROVAL:
-                    for (int i = 1; i <= numberOfTimesVoted; i++) {
-                        code.add("unsigned int votes" + i + "[V][C];");
-                        code.add("unsigned int i" + loopVariableCounter + ";");
-                        code.add("for(i" + loopVariableCounter + " = 0; i" + loopVariableCounter
-                                + " < V; i" + loopVariableCounter + "++) {");
-                        code.addTab();
-                        code.add("unsigned int i" + (loopVariableCounter + 1) + ";");
-                        code.add("for(i" + (loopVariableCounter + 1) + " = 0; i" + (loopVariableCounter + 1)
-                                + " < V; i" + (loopVariableCounter + 1) + "++) {");
-                        code.addTab();
-                        code.add("votes" + i + "[i" + loopVariableCounter
-                                + "][i" + (loopVariableCounter + 1) + " = nondet_uint();");
-                        // for approval the values are either 0 or 1 for every candidate
-                        code.add("assume(0 <= votes" + i + "[i" + loopVariableCounter
-                                + "][i" + (loopVariableCounter + 1)
-                                + "&& + votes" + i + "[i" + loopVariableCounter
-                                + "][i" + (loopVariableCounter + 1) + " <=1);");
-                        code.deleteTab();
-                        code.add("}");
-                        code.deleteTab();
-                        code.add("}");
-                        loopVariableCounter++;
-                        loopVariableCounter++;
-                        if (outputInternalType.isList()) {
-                            code.add("unsigned int elect" + i + "[C+1] = voting(votes" + i + ");");
-                        } else {
-                            code.add("unsigned int elect" + i + " = voting(votes" + i + ");");
-                        }
-                    }
-                    break;
-                case WEIGHTEDAPPROVAL:
-                    for (int i = 1; i <= numberOfTimesVoted; i++) {
-                        code.add("unsigned int votes" + i + "[V][C];");
-                        code.add("unsigned int i" + loopVariableCounter + ";");
-                        code.add("for(i" + loopVariableCounter + " = 0; i" + loopVariableCounter
-                                + " < V; i" + loopVariableCounter + "++) {");
-                        code.addTab();
-                        code.add("unsigned int i" + (loopVariableCounter + 1) + ";");
-                        code.add("for(i" + (loopVariableCounter + 1) + " = 0; i" + (loopVariableCounter + 1)
-                                + " < V; i" + (loopVariableCounter + 1) + "++) {");
-                        code.addTab();
-                        code.add("votes" + i + "[i" + loopVariableCounter
-                                + "][i" + (loopVariableCounter + 1) + " = nondet_uint();");
-                        code.add("assume(" + inputElectionType.getLowerBound()
-                                + "<= votes" + i + "[i" + loopVariableCounter
-                                + "][i" + (loopVariableCounter + 1)
-                                + "&& + votes" + i + "[i" + loopVariableCounter
-                                + "][i" + (loopVariableCounter + 1) + " <=" + inputElectionType.getUpperBound() + ");");
-                        code.deleteTab();
-                        code.add("}");
-                        code.deleteTab();
-                        code.add("}");
-                        loopVariableCounter++;
-                        loopVariableCounter++;
-                        if (outputInternalType.isList()) {
-                            code.add("unsigned int elect" + i + "[C+1] = voting(votes" + i + ");");
-                        } else {
-                            code.add("unsigned int elect" + i + " = voting(votes" + i + ");");
-                        }
-                    }
-                    break;
-                case INTEGER:
-                    ErrorLogger.log("The input Type should not be INTEGER");
-                    break;
-                default:
-                    throw new AssertionError(inputInternalType.getInternalType().name());
-                
+
+        for (int voteNumber = 1; voteNumber <= numberOfTimesVoted; voteNumber++) {
+
+            String votesX = "unsigned int votes" + voteNumber;
+
+            votesX += cCodeHelper.getCArrayType(inputType.getType());
+
+            code.add(votesX + ";");
+
+            String[] counter = {"i", "j", "k", "l"};
+
+            String forTemplate = "for(unsigned int COUNTER = 0; COUNTER < MAX; ++COUNTER){";
+
+            InternalTypeContainer cont = inputType.getType();
+            int listDepth = 0;
+            while (cont.isList()) {
+                String currentFor = forTemplate.replaceAll("COUNTER", counter[listDepth]);
+                currentFor = currentFor.replaceAll("MAX", cCodeHelper.getListSize(cont));
+                code.add(currentFor);
+                code.addTab();
+                cont = cont.getListedType();
+                listDepth++;
             }
-        } else {
-            ErrorLogger.log("The output Type can only be CANDIDATE");
+            String min = cCodeHelper.getMin(inputType, cont.getInternalType());
+            String max = cCodeHelper.getMax(inputType, cont.getInternalType());
+
+            String voteDecl = ("assume(MIN <= votes" + voteNumber).replace("MIN", min);
+
+            for (int i = 0; i < listDepth; ++i) {
+                voteDecl += "[COUNTER]".replace("COUNTER", counter[i]);
+            }
+
+            voteDecl += " < MAX);".replace("MAX", max);
+            code.add(voteDecl);
+
+            for (int i = 0; i < listDepth; ++i) {
+                code.deleteTab();
+                code.add("}");
+            }
+
+            String electX = "unsigned int elect" + voteNumber;
+
+            electX += cCodeHelper.getCArrayType(outputType.getType());
+
+            code.add(electX + ";");
+
+            code.add("elect" + voteNumber + " = voting(votes" + voteNumber + ");");
+
+            //initialize elects
         }
+
     }
-    
+
     private BooleanExpListNode generateAST(String code) {
         FormalPropertyDescriptionLexer l = new FormalPropertyDescriptionLexer(new ANTLRInputStream(code));
         CommonTokenStream ts = new CommonTokenStream(l);
         FormalPropertyDescriptionParser p = new FormalPropertyDescriptionParser(ts);
-        
+
         BooleanExpScope declaredVars = new BooleanExpScope();
-        
+
         postAndPrePropertiesDescription.getSymbolicVariableList().forEach((v) -> {
             declaredVars.addTypeForId(v.getId(), v.getInternalTypeContainer());
         });
-        
+
         return translator.generateFromSyntaxTree(
                 p.booleanExpList(),
                 electionDescription.getInputType().getType(),
