@@ -4,16 +4,13 @@ import java.util.Iterator;
 import java.util.List;
 
 import edu.pse.beast.datatypes.ElectionType;
-import edu.pse.beast.datatypes.descofvoting.ElectionTypeContainer;
-import edu.pse.beast.datatypes.internal.InternalTypeContainer;
-import edu.pse.beast.datatypes.internal.InternalTypeRep;
 import edu.pse.beast.datatypes.propertydescription.PostAndPrePropertiesDescription;
 import edu.pse.beast.highlevel.ElectionDescriptionSource;
 import edu.pse.beast.highlevel.ParameterSource;
 import edu.pse.beast.toolbox.ErrorLogger;
 
 /**
- *
+ * 
  * @author Lukas
  *
  */
@@ -62,8 +59,7 @@ public abstract class CheckerFactory implements Runnable {
 
         advanced = String.join(";", advanced.split(";"));
 
-        outerLoop:
-        for (Iterator<Integer> voteIterator = paramSrc.getParameter().getAmountVoters()
+        outerLoop: for (Iterator<Integer> voteIterator = paramSrc.getParameter().getAmountVoters()
                 .iterator(); voteIterator.hasNext();) {
             int voters = (int) voteIterator.next();
             for (Iterator<Integer> candidateIterator = paramSrc.getParameter().getAmountCandidates()
@@ -101,6 +97,7 @@ public abstract class CheckerFactory implements Runnable {
                         // the checker finished checking for these specific
                         // parameters without being stopped without a failure
                         // from the outside
+
                         currentlyRunning = null;
 
                         // if the last check was successful, we have to keep
@@ -169,7 +166,7 @@ public abstract class CheckerFactory implements Runnable {
     protected abstract Result createCounterExample(List<String> result);
 
     /**
-     *
+     * 
      * @param electionDescSrc2
      * @param postAndPrepPropDesc2
      * @param advanced
@@ -183,21 +180,26 @@ public abstract class CheckerFactory implements Runnable {
             CheckerFactory parent);
 
     /**
-     *
-     * @param amount the amount of objects to be created
+     * 
+     * @param amount
+     *            the amount of objects to be created
      * @return the result object that belongs to the Checker produced by this
-     * factory
+     *         factory
      */
     public abstract List<Result> getMatchingResult(int amount);
 
     /**
-     *
-     * @param controller the Factorycontroller that controls this checkerfactory
-     * @param electionDescSrc the electiondescriptionsource
-     * @param postAndPrepPropDescSrc the source that describes the property to
-     * be checked
-     * @param paramSrc the source for the parameters
-     * @param result the object in which the result should be saved in later
+     * 
+     * @param controller
+     *            the Factorycontroller that controls this checkerfactory
+     * @param electionDescSrc
+     *            the electiondescriptionsource
+     * @param postAndPrepPropDescSrc
+     *            the source that describes the property to be checked
+     * @param paramSrc
+     *            the source for the parameters
+     * @param result
+     *            the object in which the result should be saved in later
      * @return a new CheckerFactory
      */
     public abstract CheckerFactory getNewInstance(FactoryController controller,
@@ -206,36 +208,10 @@ public abstract class CheckerFactory implements Runnable {
 
     /**
      * checks if the result from the given checker found a counterexample or not
-     *
-     * @param toCheck the output of the checker to test
+     * 
+     * @param toCheck
+     *            the output of the checker to test
      * @return true, if the property wasn't violated, false if that was the case
      */
     public abstract boolean checkResult(List<String> toCheck);
-
-    private ElectionType getElectionTypeFromElectionDescription() {
-        InternalTypeContainer inputType = electionDescSrc.getElectionDescription().getInputType().getType();
-        if (inputType.isList() && inputType.getInternalType() == InternalTypeRep.VOTER) {
-            inputType = inputType.getListedType();
-            if (!inputType.isList() && inputType.getInternalType() == InternalTypeRep.CANDIDATE) {
-                return ElectionType.SINGLECHOICE;
-            } else if (inputType.isList()) {
-                inputType = inputType.getListedType();
-                if (!inputType.isList()) {
-                    if (null != inputType.getInternalType()) switch (inputType.getInternalType()) {
-                        case APPROVAL:
-                            return ElectionType.APPROVAL;
-                        case WEIGHTEDAPPROVAL:
-                            return ElectionType.WEIGHTEDAPPROVAL;
-                        case INTEGER:
-                            return ElectionType.PREFERENCE;
-                        default:
-                            break;
-                    }
-                }
-            }
-        }
-        ErrorLogger.log("unsupported inputType of the Election");
-        return null;
-    }
-
 }
