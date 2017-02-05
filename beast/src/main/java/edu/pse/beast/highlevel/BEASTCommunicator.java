@@ -28,50 +28,67 @@ public class BEASTCommunicator implements CheckListener {
 
     @Override
     public void startCheck() {
+
         ElectionDescriptionSource electSrc = centralObjectProvider.getElectionDescriptionSource();
         PostAndPrePropertiesDescriptionSource postAndPreSrc = centralObjectProvider.getPostAndPrePropertiesSource();
         ParameterSource paramSrc = centralObjectProvider.getParameterSrc();
-        electSrc.stopReacting();
-        postAndPreSrc.stopReacting();
-        paramSrc.stopReacting();
-        if (!electSrc.isCorrect()) {
-            System.err.println("Es bestehen noch Fehler in der Beschreibung des Wahlverfahrens. "
-                    + "Bitte korrigieren sie diese, um fortzufahren.");
-        } else if (!postAndPreSrc.isCorrect()) {
-            System.err.println("Es bestehen noch Fehler in der Beschreibung der zu prüfenden Eigenschaften. "
-                    + "Bitte korrigieren sie diese, um fortzufahren.");
-        } else if (!paramSrc.isCorrect()) {
-            System.err.println("Es bestehen noch Fehler bei den angegebenen Parametern. "
-                    + "Bitte korrigieren sie diese, um fortzufahren.");
-        } else {
-
-            resultList = centralObjectProvider.getResultCheckerCommunicator().checkPropertiesForDescription(electSrc, postAndPreSrc, paramSrc);
-
-            if (resultList.isEmpty()) {
+        
+        List<Integer> amountCandidates = paramSrc.getParameter().getAmountCandidates();
+        System.out.println("Candidates");
+        for (int i : amountCandidates){
+            System.out.println(i);
+        }
+        System.out.println("Voters");
+        amountCandidates = paramSrc.getParameter().getAmountVoters();
+        for (int i : amountCandidates){
+            System.out.println(i);
+        }
+        
+        
+        
+                /*(electSrc.stopReacting();
+                postAndPreSrc.stopReacting();
+                // paramSrc.stopReacting();
+                if (!electSrc.isCorrect()) {
+                System.err.println("Es bestehen noch Fehler in der Beschreibung des Wahlverfahrens. "
+                + "Bitte korrigieren sie diese, um fortzufahren.");
+                } else if (!postAndPreSrc.isCorrect()) {
+                System.err.println("Es bestehen noch Fehler in der Beschreibung der zu prüfenden Eigenschaften. "
+                + "Bitte korrigieren sie diese, um fortzufahren.");
+                } else if (!paramSrc.isCorrect()) {
+                System.err.println("Es bestehen noch Fehler bei den angegebenen Parametern. "
+                + "Bitte korrigieren sie diese, um fortzufahren.");
+                } else {
+                
+                resultList = centralObjectProvider.getResultCheckerCommunicator().checkPropertiesForDescription(electSrc, postAndPreSrc, paramSrc);
+                
+                if (resultList.isEmpty()) {
                 System.out.println("result List is empty");
-            }
-
-            while (resultList.size() > 0) {
+                }
+                
+                while (resultList.size() > 0) {
                 try {
-                    Thread.sleep(500);
+                Thread.sleep(500);
                 } catch (InterruptedException ex) {
-                    Logger.getLogger(BEASTCommunicator.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(BEASTCommunicator.class.getName()).log(Level.SEVERE, null, ex);
                 }
                 //for (ResultInterface result : resultList) {
                 for (Iterator<ResultInterface> iterator = resultList.iterator(); iterator.hasNext();) {
-
-                    ResultInterface result = (ResultInterface) iterator.next();
-                    if (result.readyToPresent()) {
-                        ResultPresenter resultPresenter = centralObjectProvider.getResultPresenter();
-                        resultPresenter.presentResult(result);
-                        iterator.remove();
-                    }
+                
+                ResultInterface result = (ResultInterface) iterator.next();
+                if (result.readyToPresent()) {
+                ResultPresenter resultPresenter = centralObjectProvider.getResultPresenter();
+                resultPresenter.presentResult(result);
+                iterator.remove();
                 }
-            }
-            electSrc.resumeReacting();
-            postAndPreSrc.resumeReacting();
-            paramSrc.resumeReacting();
-        }
+                }
+                }
+                electSrc.resumeReacting();
+                postAndPreSrc.resumeReacting();
+                paramSrc.resumeReacting();
+                
+                }
+                */;
     }
 
     @Override
